@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Camera App</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #111;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+        #camera-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        video, canvas {
+            width: 100%;
+            border-radius: 16px;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            margin-top: 10px;
+            gap: 10px;
+        }
+        button, select {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.3s;
+            flex: 1;
+            min-width: 120px;
+        }
+        button:hover, select:hover {
+            opacity: 0.8;
+        }
+        .gallery {
+            display: flex;
+            overflow-x: auto;
+            margin-top: 20px;
+            gap: 10px;
+        }
+        .gallery img {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        #preview-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+        #preview-container img {
+            max-width: 100%;
+            border-radius: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div id="camera-container">
+        <video id="camera" autoplay playsinline></video>
+        <canvas id="canvas" hidden></canvas>
+
+        <div class="controls">
+            <button id="capture">📷 Capture</button>
+            <button id="toggle-camera">🔄 Switch Camera</button>
+            <button id="record">🎥 Record</button>
+            <select id="filter">
+                <option value="none">No Filter</option>
+                <option value="grayscale(100%)">Grayscale</option>
+                <option value="sepia(100%)">Sepia</option>
+                <option value="invert(100%)">Invert</option>
+                <option value="blur(5px)">Blur</option>
+                <option value="hue-rotate(90deg)">Hue Rotate</option>
+            </select>
+        </div>
+
+        <div id="preview-container">
+            <img id="preview" alt="Captured Image">
+            <button id="save">💾 Save</button>
+            <button id="discard">🗑️ Discard</button>
+        </div>
+
+        <div class="gallery" id="gallery"></div>
+    </div>
+
+    <script>
+        const video = document.getElementById('camera');
+        const canvas = document.getElementById('canvas');
+        const captureBtn = document.getElementById('capture');
+        const toggleBtn = document.getElementById('toggle-camera');
+        const recordBtn = document.getElementById('record');
+        const filterSelect = document.getElementById('filter');
+        const gallery = document.getElementById('gallery');
+        const previewContainer = document.getElementById('preview-container');
+        const preview = document.getElementById('preview');
+        const saveBtn = document.getElementById('save');
+        const discardBtn = document.getElementById('discard');
+
+        let isFrontCamera = true;
+        let mediaStream = null;
+        let mediaRecorder = null;
+        let chunks = [];
+
+        async function startCamera() {
+            try {
+                if (mediaStream) {
+                    mediaStream.getTracks().forEach(track => track.stop());
+                }
+                mediaStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: isFrontCamera ? 'user' : 'environment' }
+                });
+                video.srcObject = mediaStream;
+                video.style.transform = isFrontCamera ? 'scaleX(-1)' : 'scaleX(1)';
+            } catch (error) {
+                alert('Error accessing camera: ' + error.message);
+            }
+        }
+
+        captureBtn.addEventListener('click', () => {
+            if (!mediaStream) return alert('Camera not available');
+
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+
+            if (isFrontCamera) {
+                context.translate(canvas.width, 0);
+                context.scale(-1, 1);
+            }
+
+            context.filter = filterSelect.value;
+            context.drawImage(video, 0, 0);
+
+            const imageUrl = canvas.toDataURL('image/png');
+            preview.src = imageUrl;
+            previewContainer.style.display = 'flex';
+        });
+
+        saveBtn.addEventListener('click', () => {
+            addToGallery(preview.src);
+            saveToLocalStorage(preview.src);
+            previewContainer.style.display = 'none';
+        });
+
+        discardBtn.addEventListener('click', () => {
+            previewContainer.style.display = 'none';
+        });
+
+        toggleBtn.addEventListener('click', async () => {
+            isFrontCamera = !isFrontCamera;
+            await startCamera();
+        });
+
+        function addToGallery(imageUrl) {
+            const img = document.createElement('img');
+            img.src = imageUrl;
+            gallery.appendChild(img);
+        }
+
+        function saveToLocalStorage(imageUrl) {
+            const photos = JSON.parse(localStorage.getItem('gallery')) || [];
+            photos.push(imageUrl);
+            localStorage.setItem('gallery', JSON.stringify(photos));
+        }
+
+        function loadGallery() {
+            const photos = JSON.parse(localStorage.getItem('gallery')) || [];
+            photos.forEach(addToGallery);
+        }
+
+        filterSelect.addEventListener('change', () => {
+            video.style.filter = filterSelect.value;
+        });
+
+        startCamera();
+        loadGallery();
+    </script>
+</body>
+</html>
