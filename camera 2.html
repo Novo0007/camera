@@ -5,100 +5,247 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Advanced Camera App</title>
     <style>
+        :root {
+            --bg: #0f1116;
+            --bg-accent: radial-gradient(1200px 800px at 10% 10%, rgba(124,92,255,0.25), transparent 50%),
+                          radial-gradient(1200px 800px at 90% 90%, rgba(0,200,255,0.18), transparent 50%);
+            --card: rgba(255, 255, 255, 0.06);
+            --border: rgba(255, 255, 255, 0.12);
+            --text: #e8e9ee;
+            --muted: #a8adbd;
+            --accent: #7c5cff;
+            --accent-2: #00d1ff;
+            --danger: #ff4d4f;
+            --success: #12d18e;
+        }
+        * { box-sizing: border-box; }
         body {
             margin: 0;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            background: #111;
-            color: #fff;
-            font-family: Arial, sans-serif;
-            overflow: hidden;
-            box-sizing: border-box;
+            min-height: 100vh;
+            background: var(--bg);
+            color: var(--text);
+            font-family: ui-sans-serif, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+            overflow-x: hidden;
+            background-image: var(--bg-accent);
         }
-        #camera-container {
+        #camera-container.card {
             position: relative;
             width: 100%;
-            max-width: 800px;
-            padding: 10px;
-            box-sizing: border-box;
+            max-width: 880px;
+            padding: 16px;
+            border-radius: 20px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04));
+            border: 1px solid var(--border);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
+            backdrop-filter: blur(14px);
+        }
+        .top-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 6px 2px 12px;
+        }
+        .top-bar .spacer { flex: 1; }
+        .status { font-size: 12px; color: var(--muted); opacity: 0.9; }
+        .device-select { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+        .device-select select {
+            background: var(--card);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 6px 10px;
+            border-radius: 10px;
+            outline: none;
+        }
+        .video-wrapper {
+            position: relative;
+            border-radius: 16px;
+            overflow: hidden;
+            background: #000;
         }
         video, canvas {
             width: 100%;
-            border-radius: 16px;
+            display: block;
         }
+        #grid-overlay.hidden, #countdown.hidden, #flash.hidden, .hidden { display: none !important; }
+        #grid-overlay {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.12), rgba(255,255,255,0.12)),
+                linear-gradient(90deg, rgba(255,255,255,0.12), rgba(255,255,255,0.12));
+            background-size: 100% calc(100%/3), calc(100%/3) 100%;
+            background-position: 0 calc(100%/3), calc(100%/3) 0;
+            background-repeat: repeat-y, repeat-x;
+        }
+        #countdown {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            font-size: clamp(64px, 10vw, 120px);
+            font-weight: 800;
+            color: white;
+            text-shadow: 0 10px 40px rgba(0,0,0,0.7);
+        }
+        #flash {
+            position: absolute;
+            inset: 0;
+            background: white;
+            opacity: 0;
+        }
+        .spinner {
+            position: absolute; inset: 12px 12px auto auto;
+            width: 26px; height: 26px;
+            border: 3px solid rgba(255,255,255,0.2);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
         .controls {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-between;
-            margin-top: 10px;
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 10px;
+            margin-top: 12px;
+        }
+        @media (max-width: 720px) {
+            .controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
         button, select {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
+            padding: 12px 14px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
             cursor: pointer;
-            transition: 0.3s;
-            flex: 1;
-            min-width: 120px;
+            transition: 0.2s ease;
+            background: var(--card);
+            color: var(--text);
+            outline: none;
         }
-        button:hover, select:hover {
-            opacity: 0.8;
-        }
+        button:hover, select:hover { filter: brightness(1.1); }
+        button:active { transform: translateY(1px); }
+        button.primary { background: linear-gradient(180deg, var(--accent), #6247ff); border-color: transparent; color: white; }
+        button.danger { background: linear-gradient(180deg, var(--danger), #e04244); border-color: transparent; color: white; }
+        button.ghost { background: transparent; }
+        select.full { grid-column: span 2; }
+
         .gallery {
-            display: flex;
-            overflow-x: auto;
-            margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
             gap: 10px;
+            margin-top: 16px;
         }
-        .gallery img {
-            width: 100px;
-            height: 100px;
-            object-fit: cover;
-            border-radius: 8px;
-            cursor: pointer;
+        .gallery-item {
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            background: #000;
         }
-        #preview-container {
+        .gallery-item img, .gallery-item video {
+            width: 100%; height: 100%; object-fit: cover; display: block;
+        }
+        .gallery-item .delete {
+            position: absolute; top: 6px; right: 6px;
+            background: rgba(0,0,0,0.55);
+            border: 1px solid var(--border);
+            color: #fff; border-radius: 999px; padding: 4px 8px; font-size: 12px; cursor: pointer;
+        }
+
+        /* Modal preview */
+        #preview-container.modal {
+            position: fixed;
+            inset: 0;
             display: none;
-            flex-direction: column;
             align-items: center;
-            margin-top: 20px;
+            justify-content: center;
+            background: rgba(0,0,0,0.6);
+            padding: 20px;
+            z-index: 50;
         }
-        #preview-container img {
-            max-width: 100%;
+        #preview-container.modal .content {
+            width: min(92vw, 920px);
+            background: linear-gradient(180deg, rgba(255,255,255,0.1), rgba(255,255,255,0.06));
+            border: 1px solid var(--border);
             border-radius: 16px;
+            padding: 12px;
+            backdrop-filter: blur(12px);
+        }
+        #preview-container img, #preview-video {
+            max-width: 100%;
+            border-radius: 12px;
+            display: block;
+            background: #000;
+        }
+        .modal-actions {
+            display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;
         }
     </style>
 </head>
 <body>
-    <div id="camera-container">
-        <video id="camera" autoplay playsinline></video>
-        <canvas id="canvas" hidden></canvas>
+    <div id="camera-container" class="card">
+        <div class="top-bar">
+            <div class="status"><span id="status-text">Ready</span></div>
+            <div class="spacer"></div>
+            <label class="device-select">
+                <span>Camera</span>
+                <select id="device-select"></select>
+            </label>
+        </div>
+
+        <div class="video-wrapper">
+            <video id="camera" autoplay playsinline></video>
+            <canvas id="canvas" hidden></canvas>
+            <div id="grid-overlay" class="hidden"></div>
+            <div id="countdown" class="hidden"></div>
+            <div id="flash" class="hidden"></div>
+            <div id="spinner" class="spinner hidden"></div>
+        </div>
 
         <div class="controls">
-            <button id="capture">📷 Capture</button>
-            <button id="toggle-camera">🔄 Switch Camera</button>
-            <button id="record">🎥 Record</button>
-            <select id="filter">
+            <button id="capture" class="primary">📸 Capture</button>
+            <button id="record" class="danger">● Record</button>
+            <button id="toggle-camera">🔄 Switch</button>
+            <select id="filter" class="full">
                 <option value="none">No Filter</option>
                 <option value="grayscale(100%)">Grayscale</option>
                 <option value="sepia(100%)">Sepia</option>
                 <option value="invert(100%)">Invert</option>
                 <option value="blur(5px)">Blur</option>
                 <option value="hue-rotate(90deg)">Hue Rotate</option>
+                <option value="contrast(120%) saturate(120%)">Vivid</option>
+                <option value="brightness(110%) contrast(110%) saturate(80%) sepia(10%)">Warm</option>
             </select>
+            <button id="toggle-grid"># Grid</button>
+            <button id="toggle-timer">⏱️ Timer: Off</button>
+            <button id="clear-gallery" class="ghost">🧹 Clear</button>
         </div>
 
-        <div id="preview-container">
-            <img id="preview" alt="Captured Image">
-            <button id="save">💾 Save</button>
-            <button id="discard">🗑️ Discard</button>
+        <div id="preview-container" class="modal hidden">
+            <div class="content">
+                <img id="preview" alt="Captured Image" class="hidden">
+                <video id="preview-video" controls class="hidden"></video>
+                <div class="modal-actions">
+                    <button id="download">⬇️ Download</button>
+                    <button id="save">💾 Save</button>
+                    <button id="discard" class="danger">🗑️ Discard</button>
+                    <button id="share">📤 Share</button>
+                </div>
+            </div>
         </div>
 
         <div class="gallery" id="gallery"></div>
     </div>
+
+    <template id="gallery-item-template">
+        <div class="gallery-item">
+            <button class="delete" title="Remove">✕</button>
+        </div>
+    </template>
 
     <script>
         const video = document.getElementById('camera');
@@ -109,88 +256,336 @@
         const filterSelect = document.getElementById('filter');
         const gallery = document.getElementById('gallery');
         const previewContainer = document.getElementById('preview-container');
-        const preview = document.getElementById('preview');
+        const previewImg = document.getElementById('preview');
+        const previewVideo = document.getElementById('preview-video');
         const saveBtn = document.getElementById('save');
         const discardBtn = document.getElementById('discard');
+        const downloadBtn = document.getElementById('download');
+        const shareBtn = document.getElementById('share');
+        const deviceSelect = document.getElementById('device-select');
+        const gridOverlay = document.getElementById('grid-overlay');
+        const toggleGridBtn = document.getElementById('toggle-grid');
+        const toggleTimerBtn = document.getElementById('toggle-timer');
+        const clearGalleryBtn = document.getElementById('clear-gallery');
+        const spinner = document.getElementById('spinner');
+        const countdownEl = document.getElementById('countdown');
+        const statusText = document.getElementById('status-text');
 
         let isFrontCamera = true;
         let mediaStream = null;
         let mediaRecorder = null;
         let chunks = [];
+        let devices = [];
+        let currentDeviceId = null;
+        let timerEnabled = JSON.parse(localStorage.getItem('timerEnabled') || 'false');
+        let gridEnabled = JSON.parse(localStorage.getItem('gridEnabled') || 'false');
+
+        function setStatus(text) { statusText.textContent = text; }
+        function showSpinner(flag) { spinner.classList.toggle('hidden', !flag); }
+
+        async function populateDevices() {
+            try {
+                const all = await navigator.mediaDevices.enumerateDevices();
+                devices = all.filter(d => d.kind === 'videoinput');
+                deviceSelect.innerHTML = '';
+                devices.forEach((d, i) => {
+                    const opt = document.createElement('option');
+                    opt.value = d.deviceId;
+                    opt.textContent = d.label || `Camera ${i+1}`;
+                    deviceSelect.appendChild(opt);
+                });
+                const savedId = localStorage.getItem('deviceId');
+                if (savedId && devices.some(d => d.deviceId === savedId)) {
+                    deviceSelect.value = savedId;
+                    currentDeviceId = savedId;
+                }
+            } catch (e) {
+                console.warn('enumerateDevices failed', e);
+            }
+        }
 
         async function startCamera() {
             try {
-                if (mediaStream) {
-                    mediaStream.getTracks().forEach(track => track.stop());
-                }
-                mediaStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: isFrontCamera ? 'user' : 'environment' }
-                });
+                setStatus('Starting camera...');
+                showSpinner(true);
+                if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+
+                const constraints = {
+                    video: currentDeviceId ? { deviceId: { exact: currentDeviceId } } : { facingMode: isFrontCamera ? 'user' : 'environment' },
+                    audio: false
+                };
+                mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
                 video.srcObject = mediaStream;
-                video.style.transform = isFrontCamera ? 'scaleX(-1)' : 'scaleX(1)';
+                video.style.transform = isFrontCamera && !currentDeviceId ? 'scaleX(-1)' : 'scaleX(1)';
+                applyFilter();
+                setStatus('Ready');
             } catch (error) {
+                console.error(error);
+                setStatus('Camera error');
                 alert('Error accessing camera: ' + error.message);
+            } finally {
+                showSpinner(false);
             }
         }
 
-        captureBtn.addEventListener('click', () => {
-            if (!mediaStream) return alert('Camera not available');
+        function applyFilter() {
+            const value = filterSelect.value;
+            video.style.filter = value;
+            localStorage.setItem('filter', value);
+        }
 
+        async function handleCapture() {
+            if (!mediaStream) return alert('Camera not available');
+            if (timerEnabled) {
+                await runCountdown(3);
+            }
             const context = canvas.getContext('2d');
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
-
-            if (isFrontCamera) {
+            if (isFrontCamera && !currentDeviceId) {
                 context.translate(canvas.width, 0);
                 context.scale(-1, 1);
             }
-
             context.filter = filterSelect.value;
-            context.drawImage(video, 0, 0);
-
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            flash();
             const imageUrl = canvas.toDataURL('image/png');
-            preview.src = imageUrl;
-            previewContainer.style.display = 'flex';
-        });
-
-        saveBtn.addEventListener('click', () => {
-            addToGallery(preview.src);
-            saveToLocalStorage(preview.src);
-            previewContainer.style.display = 'none';
-        });
-
-        discardBtn.addEventListener('click', () => {
-            previewContainer.style.display = 'none';
-        });
-
-        toggleBtn.addEventListener('click', async () => {
-            isFrontCamera = !isFrontCamera;
-            await startCamera();
-        });
-
-        function addToGallery(imageUrl) {
-            const img = document.createElement('img');
-            img.src = imageUrl;
-            gallery.appendChild(img);
+            openPreview({ type: 'image', url: imageUrl });
         }
 
-        function saveToLocalStorage(imageUrl) {
+        function flash() {
+            const el = document.getElementById('flash');
+            el.classList.remove('hidden');
+            el.style.opacity = '0.9';
+            setTimeout(() => { el.style.opacity = '0'; el.classList.add('hidden'); }, 120);
+        }
+
+        function runCountdown(n) {
+            return new Promise(resolve => {
+                countdownEl.classList.remove('hidden');
+                let count = n;
+                countdownEl.textContent = count;
+                const iv = setInterval(() => {
+                    count -= 1;
+                    if (count <= 0) {
+                        clearInterval(iv);
+                        countdownEl.classList.add('hidden');
+                        resolve();
+                    } else {
+                        countdownEl.textContent = count;
+                    }
+                }, 700);
+            });
+        }
+
+        function openPreview(item) {
+            previewContainer.classList.remove('hidden');
+            previewContainer.style.display = 'flex';
+            previewImg.classList.add('hidden');
+            previewVideo.classList.add('hidden');
+            saveBtn.disabled = false;
+
+            if (item.type === 'image') {
+                previewImg.src = item.url;
+                previewImg.classList.remove('hidden');
+                saveBtn.dataset.type = 'image';
+                saveBtn.dataset.url = item.url;
+                downloadBtn.onclick = () => downloadBlob(item.url, 'photo.png');
+                shareBtn.onclick = () => shareFileFromDataUrl(item.url, 'photo.png', 'image/png');
+            } else if (item.type === 'video') {
+                previewVideo.src = item.url;
+                previewVideo.classList.remove('hidden');
+                saveBtn.dataset.type = 'video';
+                saveBtn.dataset.url = item.url;
+                downloadBtn.onclick = () => downloadUrl(item.url, 'video.webm');
+                shareBtn.onclick = () => shareUrl(item.url, 'video.webm', 'video/webm');
+            }
+        }
+
+        function closePreview() {
+            previewContainer.classList.add('hidden');
+            previewContainer.style.display = 'none';
+            previewVideo.pause();
+        }
+
+        function addToGallery(item) {
+            const tpl = document.getElementById('gallery-item-template');
+            const node = tpl.content.firstElementChild.cloneNode(true);
+            if (item.type === 'image') {
+                const img = document.createElement('img');
+                img.src = item.url;
+                node.appendChild(img);
+                node.dataset.type = 'image';
+                node.dataset.url = item.url;
+                node.addEventListener('click', (e) => { if (e.target.classList.contains('delete')) return; openPreview({ type: 'image', url: item.url }); });
+            } else if (item.type === 'video') {
+                const vid = document.createElement('video');
+                vid.src = item.url; vid.muted = true; vid.loop = true; vid.playsInline = true; vid.autoplay = true;
+                node.appendChild(vid);
+                node.dataset.type = 'video';
+                node.dataset.url = item.url;
+                node.addEventListener('click', (e) => { if (e.target.classList.contains('delete')) return; openPreview({ type: 'video', url: item.url }); });
+            }
+            node.querySelector('.delete').addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (node.dataset.type === 'image') removeFromLocalStorage(node.dataset.url);
+                node.remove();
+            });
+            gallery.prepend(node);
+        }
+
+        function saveImageToLocalStorage(imageUrl) {
             const photos = JSON.parse(localStorage.getItem('gallery')) || [];
             photos.push(imageUrl);
             localStorage.setItem('gallery', JSON.stringify(photos));
         }
-
+        function removeFromLocalStorage(imageUrl) {
+            const photos = JSON.parse(localStorage.getItem('gallery')) || [];
+            const next = photos.filter(p => p !== imageUrl);
+            localStorage.setItem('gallery', JSON.stringify(next));
+        }
         function loadGallery() {
             const photos = JSON.parse(localStorage.getItem('gallery')) || [];
-            photos.forEach(addToGallery);
+            photos.forEach(url => addToGallery({ type: 'image', url }));
         }
 
-        filterSelect.addEventListener('change', () => {
-            video.style.filter = filterSelect.value;
-        });
+        function downloadUrl(url, filename) {
+            const a = document.createElement('a');
+            a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+        }
+        function downloadBlob(dataUrl, filename) {
+            downloadUrl(dataUrl, filename);
+        }
+        async function shareFileFromDataUrl(dataUrl, filename, mime) {
+            if (!navigator.canShare || !navigator.share) return downloadBlob(dataUrl, filename);
+            const res = await fetch(dataUrl);
+            const blob = await res.blob();
+            const file = new File([blob], filename, { type: mime });
+            try { await navigator.share({ files: [file] }); } catch {}
+        }
+        async function shareUrl(url, filename, mime) {
+            if (!navigator.canShare || !navigator.share) return downloadUrl(url, filename);
+            try {
+                const res = await fetch(url);
+                const blob = await res.blob();
+                const file = new File([blob], filename, { type: mime });
+                await navigator.share({ files: [file] });
+            } catch {}
+        }
 
-        startCamera();
-        loadGallery();
+        function toggleGrid() {
+            gridEnabled = !gridEnabled;
+            localStorage.setItem('gridEnabled', JSON.stringify(gridEnabled));
+            gridOverlay.classList.toggle('hidden', !gridEnabled);
+            toggleGridBtn.textContent = gridEnabled ? '✓ Grid' : '# Grid';
+        }
+        function toggleTimer() {
+            timerEnabled = !timerEnabled;
+            localStorage.setItem('timerEnabled', JSON.stringify(timerEnabled));
+            toggleTimerBtn.textContent = timerEnabled ? '⏱️ Timer: On' : '⏱️ Timer: Off';
+        }
+
+        function bindEvents() {
+            captureBtn.addEventListener('click', handleCapture);
+            toggleBtn.addEventListener('click', async () => {
+                // Clear explicit device selection when switching by facingMode
+                currentDeviceId = null;
+                localStorage.removeItem('deviceId');
+                isFrontCamera = !isFrontCamera;
+                await startCamera();
+            });
+            recordBtn.addEventListener('click', toggleRecording);
+            filterSelect.addEventListener('change', applyFilter);
+            deviceSelect.addEventListener('change', async () => {
+                currentDeviceId = deviceSelect.value || null;
+                if (currentDeviceId) localStorage.setItem('deviceId', currentDeviceId);
+                await startCamera();
+            });
+            toggleGridBtn.addEventListener('click', toggleGrid);
+            toggleTimerBtn.addEventListener('click', toggleTimer);
+            clearGalleryBtn.addEventListener('click', () => {
+                if (confirm('Clear saved photos?')) {
+                    localStorage.removeItem('gallery');
+                    gallery.innerHTML = '';
+                }
+            });
+            saveBtn.addEventListener('click', () => {
+                const type = saveBtn.dataset.type;
+                const url = saveBtn.dataset.url;
+                if (type === 'image') {
+                    addToGallery({ type: 'image', url });
+                    saveImageToLocalStorage(url);
+                } else if (type === 'video') {
+                    addToGallery({ type: 'video', url });
+                }
+                closePreview();
+            });
+            discardBtn.addEventListener('click', closePreview);
+
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'c') handleCapture();
+                if (e.key === 'r') toggleRecording();
+                if (e.key === 'g') toggleGrid();
+                if (e.key === 't') toggleTimer();
+                if (e.key === 'Escape') closePreview();
+            });
+        }
+
+        function toggleRecording() {
+            if (!mediaStream) return alert('Camera not available');
+            if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+                try {
+                    chunks = [];
+                    const options = getSupportedRecordingOptions();
+                    mediaRecorder = new MediaRecorder(mediaStream, options);
+                    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+                    mediaRecorder.onstop = () => {
+                        const blob = new Blob(chunks, { type: mediaRecorder.mimeType || 'video/webm' });
+                        const url = URL.createObjectURL(blob);
+                        openPreview({ type: 'video', url });
+                        recordBtn.textContent = '● Record';
+                        recordBtn.classList.add('danger');
+                    };
+                    mediaRecorder.start();
+                    recordBtn.textContent = '■ Stop';
+                    recordBtn.classList.remove('danger');
+                } catch (e) {
+                    console.error('MediaRecorder failed', e);
+                    alert('Recording is not supported in this browser.');
+                }
+            } else if (mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+            }
+        }
+        function getSupportedRecordingOptions() {
+            const types = [
+                'video/webm;codecs=vp9',
+                'video/webm;codecs=vp8',
+                'video/webm',
+                'video/mp4;codecs=h264' // rarely supported without flags
+            ];
+            for (const type of types) {
+                if (MediaRecorder.isTypeSupported(type)) return { mimeType: type };
+            }
+            return {};
+        }
+
+        async function init() {
+            // Load saved settings
+            const savedFilter = localStorage.getItem('filter');
+            if (savedFilter) filterSelect.value = savedFilter;
+            applyFilter();
+            gridOverlay.classList.toggle('hidden', !gridEnabled);
+            toggleGridBtn.textContent = gridEnabled ? '✓ Grid' : '# Grid';
+            toggleTimerBtn.textContent = timerEnabled ? '⏱️ Timer: On' : '⏱️ Timer: Off';
+
+            await populateDevices();
+            await startCamera();
+            loadGallery();
+            bindEvents();
+        }
+
+        init();
     </script>
 </body>
 </html>
